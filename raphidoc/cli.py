@@ -14,7 +14,7 @@ from . import mdx_math
 def main():
     # TODO: check if file exist..
     cfg = None
-    with open('raphidocs.yml') as f:
+    with open('raphidoc.yml') as f:
         cfg = yaml.load(f.read())
 
     #TOOD: setup required directories...
