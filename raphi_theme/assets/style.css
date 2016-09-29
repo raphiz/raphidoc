@@ -1,0 +1,9 @@
+@page {
+    size: A4; margin: 1cm
+}
+.inline-math {
+  height: 1rem;
+}
+.emoji {
+    max-height: 1em;
+}

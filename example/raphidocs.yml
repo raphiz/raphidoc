@@ -1,0 +1,7 @@
+site_name: SE1 - Documentation
+pages:
+    Is it an Intro? : intro.md
+    Schubudu : index.md
+    # fup : fapp.md
+
+theme: ../raphi_theme/
