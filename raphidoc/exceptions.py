@@ -1,0 +1,2 @@
+class RaphidocException(Exception):
+    pass

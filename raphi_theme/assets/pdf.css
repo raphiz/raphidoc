@@ -1,0 +1,16 @@
+h1 {
+    -weasy-string-set: chapter "Current chapter: " content();
+}
+
+@page {
+    size: A4;
+    margin: 1cm;
+
+    @top-left {
+        content: string(chapter);
+    }
+
+    @bottom-right {
+        content: "Seite " counter(page) " von " counter(pages);
+    }
+}

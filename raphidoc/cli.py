@@ -1,77 +1,104 @@
+import click
+import logging
 import os
+from . import generator
 
-import yaml
-from weasyprint import HTML
-import markdown
-from . import mdx_math
+import time
+from watchdog.observers import Observer
+from watchdog.events import PatternMatchingEventHandler
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 
-# TODO: add commands build, clean, serve and auto-build
-# TODO: output/html and output/pdf ?
+logger = logging.getLogger('raphidoc')
 
 
-# TODO: fix formulas...
+@click.group()
+@click.option('-v', '--verbose', is_flag=True, default=False, help='Verbose output')
+@click.option('-d', '--directory', type=click.Path(file_okay=False,
+              dir_okay=True, writable=True, exists=True), default='./',
+              help='The project working directory (must contain raphidoc.yml)')
+def cli(verbose, directory):
+    setup_logging(verbose)
+    logger.debug("Working directory is `{}`".format(directory))
+    os.chdir(directory)
+
+
+@click.command()
+def init():
+    logger.info('Not yet implemented - will create raphidoc.yml')
+
+
+@click.command()
+def clean():
+    logger.info('Not yet implemented - will create raphidoc.yml')
+
+
+@click.command()
+def html():
+    logger.info('Generating html')
+    generator.generate_html()
+
+
+@click.command()
+@click.option('-e', '--exclude', multiple=True, help='Files and directory to ignore when changed')
+def serve(exclude):
+
+    observer = Observer()
+
+    class EventHandler(PatternMatchingEventHandler):
+        def on_any_event(self, event):
+            # Manually filter output directory - pattern does not
+            # work somehow...
+            if (event.src_path.startswith('./output')):
+                return
+            logger.debug(event)
+            logger.info('Regenerating html...')
+            generator.generate_html()
+
+    handler = EventHandler()
+    handler._ignore_patterns = exclude
+    observer.schedule(handler, './', recursive=True)
+    observer.start()
+    logger.info('Serving at :')
+    # TODO: generate for the first time
+    # TODO: serve
+    # TODO: make generic - so that it works for PDF as well!
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+
+
+@click.command()
+def pdf():
+    logger.info('Generating PDF')
+    generator.generate_pdf()
+
+
+def setup_logging(verbose):
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    formatter = logging.Formatter('%(message)s')
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('[%(levelname)-7s] %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    logger.debug("Setting up logging complete")
+
 
 def main():
-    # TODO: check if file exist..
-    cfg = None
-    with open('raphidoc.yml') as f:
-        cfg = yaml.load(f.read())
+    try:
+        cli.add_command(init)
+        cli.add_command(html)
+        cli.add_command(serve)
+        cli.add_command(pdf)
+        cli(standalone_mode=False)
+    except Exception as e:
+        logger.error(e)
+        logger.debug(e, exc_info=True)
+        exit(1)
 
-    #TOOD: setup required directories...
-    if not os.path.exists('output'):
-        os.makedirs('output')
-
-    extensions = [mdx_math.MathExtension(), 'markdown.extensions.def_list',
-                  'markdown.extensions.codehilite', 'markdown.extensions.admonition',
-                  'pymdownx.github(no_nl2br=True)']
-
-
-    # TODO: Validate config - especially check if theme dir exists
-
-    # TODO: make loading of themes fail safe!
-    # TODO: how to transfer assets from themes? (eg compy assets directory)
-    page_template = None
-    with open('%s/page.html' % cfg['theme']) as f:
-        page_template = f.read()
-
-    complete = ''
-    for name, path in cfg['pages'].items():
-        if not os.path.exists(path):
-            print('todo: propper warning!')
-
-        raw_markdown = None
-        with open(path) as f:
-            raw_markdown = f.read()
-
-        raw_html = markdown.markdown(raw_markdown, extensions)
-
-        complete += raw_html
-
-        # TODO: more advanced templating?
-        # jinja is probably an overkill - however it's required for a pretty menu
-        # TODO: move into a function
-        templated = page_template.replace('{{content}}', raw_html)
-
-        # TODO: better solution for file extension!
-        # eg. if extension is not .md - try to remove the file extension - if not possible, just append .html?
-        with open('output/%s.html' % path[:-3], 'w') as f:
-            f.write(templated)
-
-        # TODO: add (configurabel) spacer between pages
-        complete += '\n<hr>\n'
-
-    pdf_template = None
-    with open('%s/pdf.html' % cfg['theme']) as f:
-        pdf_template = f.read()
-    # todo: call templating function
-    with open('output/tmp.pdf.html', 'w') as f:
-        f.write(complete)
-    # TODO: delete this file afterwards!
-
-    # TODO: run this in the "safely" in the output dir...
-    HTML(string=complete, base_url='./').write_pdf('index.pdf')
-
-
-
-
-    print("okay!")
+if __name__ == '__main__':
+    main()

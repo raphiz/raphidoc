@@ -25,7 +25,6 @@ setup(
         'console_scripts':
             ['raphidoc = raphidoc.cli:main']
     },
-
     classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.5',

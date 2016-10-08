@@ -29,7 +29,7 @@ AFTER_TEX = """$
 
 # TODO: make configurable
 DIRECTORY = 'output/assets'
-
+DIRECTORY = 'output/assets'
 
 class MathPattern(markdown.inlinepatterns.Pattern):
     def __init__(self):
@@ -47,7 +47,8 @@ class MathPattern(markdown.inlinepatterns.Pattern):
     def generateImage(self, code):
         digest = md5(code.encode('utf-8')).hexdigest()
         file_name = '{}/{}'.format(DIRECTORY, digest)
-        png = file_name + ".png"
+        # TODO: cleaner solutoon
+        png = "assets/{}.png".format(digest)
         tex = file_name + ".tex"
 
         # if the image already exists
