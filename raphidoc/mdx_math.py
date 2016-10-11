@@ -31,6 +31,7 @@ AFTER_TEX = """$
 DIRECTORY = 'output/assets'
 DIRECTORY = 'output/assets'
 
+
 class MathPattern(markdown.inlinepatterns.Pattern):
     def __init__(self):
         markdown.inlinepatterns.Pattern.__init__(self, r'\$\$(.*)\$\$')

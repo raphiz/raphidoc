@@ -4,11 +4,13 @@ import os
 
 from . import generator
 from . import utils
+from . import __VERSION__
 
 logger = logging.getLogger('raphidoc')
 
 
 @click.group()
+@click.version_option(version=__VERSION__)
 @click.option('-v', '--verbose', is_flag=True, default=False, help='Verbose output')
 @click.option('-d', '--directory', type=click.Path(file_okay=False,
               dir_okay=True, writable=True, exists=True), default='./',
