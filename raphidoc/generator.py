@@ -1,31 +1,31 @@
-import logging
 import os
+import glob
+import logging
 import shutil
-import yaml
+
 import markdown
 import html5lib
 import weasyprint
 from lxml import html
 from jinja2 import Template, Environment, FileSystemLoader
 
-from .exceptions import RaphidocException
 from . import mdx_math
+from .config import load_config
 
 logger = logging.getLogger(__name__)
 
-CONFIG_FILE_NAME = 'raphidoc.yml'
-OUTPUT_DIRECTORY = 'output'
-
 
 class Page():
-    def __init__(self, path, md):
+    def __init__(self, working_directory, path, md):
         self.path = path
+        self.working_directory = working_directory
+
         # TODO: what if no html extension? What if pure html doc?
         self.output_path = path.replace('.md', '.html')
         self.md = md
 
     def render(self):
-        with open(self.path) as f:
+        with open(os.path.join(self.working_directory, self.path)) as f:
             raw = f.read()
             self.result = self.md.convert(raw)
             self.toc = '{{TOC}}' in self.result
@@ -42,143 +42,128 @@ class Page():
         return toc
 
 
-def _generate(output_format, callback):
-    output_directory = os.path.join(OUTPUT_DIRECTORY, output_format)
-    config = _load_config()
+class Generator:
 
-    _setup_output(output_directory)
-    _copy_assets(config, output_directory)
+    def __init__(self, working_directory):
+        self.working_directory = os.path.abspath(working_directory)
 
-    md = _load_markdown(config)
-    pages = _generate_pages(config, md)
+    def generate(self):
+        self.config = load_config(self.working_directory)
+        # TODO: load 'output' & markdown exteions from config
+        self.output_directory = os.path.join(self.working_directory, 'output', self.identifier)
+        # TODO: Configure math via config (eg. additional packages, output directory etc.)
+        self.md = markdown.Markdown(extensions=[mdx_math.MathExtension(self.output_directory),
+                                                'markdown.extensions.def_list',
+                                                'markdown.extensions.codehilite',
+                                                'markdown.extensions.admonition',
+                                                'pymdownx.github(no_nl2br=True)'])
 
-    callback(config, output_directory, pages, md)
+        self._setup_output()
+        self._copy_assets()
 
+        pages = []
+        for path in self.config['pages']:
+            page = Page(self.working_directory, path, self.md)
+            page.render()
+            pages.append(page)
 
-def generate_html():
-    """
-        Generates the paeg - in the current working directory!
-    """
-    _generate('html', _gernerate_html)
+        self.process(pages)
 
+        self.config = None
+        self.output_directory = None
+        self.md = None
 
-def _gernerate_html(config, output_directory, pages, md):
-    toc = []
-    for page in pages:
-        toc += page.generate_toc()
-
-    # TODO: properly and hierarchically format the toc
-    # TODO: extract (and make configurable in theme?)
-    toc_html = Template("""
-    <ul>
-        {% for x,y,z in pages %}
-        <li class="toc-{{x}}"><a href="{{y}}">{{z}}</a></li>
-        {% endfor %}
-    </ul>
-    """).render(pages=toc)
-
-    env = Environment(loader=FileSystemLoader(config['theme']))
-    template = env.get_template('page.html')
-
-    # Write the output
-    for page in pages:
-        raw = page.result
-        if page.toc:
-            raw = raw.replace('{{TOC}}', toc_html)
-
-        templated = template.render(content=raw)
-        if not os.path.exists(os.path.join(output_directory, os.path.dirname(page.output_path))):
-            os.makedirs(os.path.join(output_directory, os.path.dirname(page.output_path)))
-
-        with open('{0}/{1}'.format(output_directory, page.output_path), 'w') as f:
-            f.write(templated)
-
-
-def generate_pdf():
-    """
-        Generates the paeg - in the current working directory!
-    """
-    _generate('pdf', _gernerate_pdf)
-
-
-def _gernerate_pdf(config, output_directory, pages, md):
-    env = Environment(loader=FileSystemLoader(config['theme']))
-    template = env.get_template('pdf.html')
-
-    complete = ''
-    for page in pages:
-        raw = page.result
-        if page.toc:
-            # TODO: Generate!
-            pass
-        complete += raw + '\n'
-
-    tmp_html = '{0}/pdf.tmp.html'.format(output_directory)
-    with open(tmp_html, 'w') as f:
-        f.write(template.render(content=complete))
-
-    document = weasyprint.HTML(tmp_html).render()
-    # TODO: make configurable
-    document.write_pdf(os.path.join(output_directory, 'index.pdf'))
-
-
-def _generate_pages(config, md):
-    pages = []
-    for path in config['pages']:
-        page = Page(path, md)
-        page.render()
-        pages.append(page)
-    return pages
-
-
-def _load_markdown(config):
-    # TOOD: load more from config
-    md = markdown.Markdown(extensions=[mdx_math.MathExtension(), 'markdown.extensions.def_list',
-                                       'markdown.extensions.codehilite',
-                                       'markdown.extensions.admonition',
-                                       'pymdownx.github(no_nl2br=True)'])
-    return md
-
-
-def _copy_assets(config, output_directory):
-    # TODO: if assets directory contains folders html/ or pdf/ - only copy these directories!
-    shutil.copytree('{}/assets/'.format(config['theme']), '{}/assets'.format(output_directory))
-    for asset in config['assets']:
-        if not os.path.exists(asset):
-            logger.warning('Asset `{0}` was declared in config but does not exist!'.format(asset))
-            continue
-        if os.path.isdir(asset):
-            shutil.copytree(asset, '{}/{}'.format(output_directory, asset))
+    def _setup_output(self):
+        if os.path.exists(self.output_directory):
+            logger.debug("Cleaning up existing directory `{}`".format(self.output_directory))
+            for f in glob.glob(self.output_directory + '/*'):
+                if os.path.isdir(f):
+                    shutil.rmtree(f)
+                else:
+                    os.unlink(f)
         else:
-            if not os.path.exists(os.path.join(output_directory, os.path.dirname(asset))):
-                os.makedirs(os.path.join(output_directory, os.path.dirname(asset)))
-            shutil.copy(asset, '{}/{}'.format(output_directory, asset))
+            logger.debug("Generating output directories `{}`".format(self.output_directory))
+            os.makedirs(self.output_directory)
 
+    def _copy_assets(self):
+        # TODO: if assets directory contains folders html/ or pdf/ - only copy these directories!
+        shutil.copytree(os.path.join(self.config['theme'], 'assets'),
+                        os.path.join(self.output_directory, 'assets'))
 
-def _setup_output(output_directory):
-    if os.path.exists(output_directory):
-        logger.debug("Cleaning up existing directory `{}`".format(output_directory))
-        import glob
-        for f in glob.glob(output_directory + '/*'):
-            if os.path.isdir(f):
-                shutil.rmtree(f)
+        for asset in self.config['assets']:
+            abspath = os.path.join(self.working_directory, asset)
+            if not os.path.exists(abspath):
+                logger.warning('Asset `{0}` was declared in config but does not exist!'
+                               .format(asset))
+                continue
+            if os.path.isdir(abspath):
+                shutil.copytree(abspath, os.path.join(self.output_directory, asset))
             else:
-                os.unlink(f)
-    else:
-        logger.debug("Generating output directories `{}`".format(output_directory))
-        os.makedirs(output_directory)
+                destination_dir = os.path.join(self.output_directory, os.path.dirname(asset))
+                if not os.path.exists(destination_dir):
+                    os.makedirs(destination_dir)
+                shutil.copy(abspath, os.path.join(self.output_directory, asset))
 
 
-def _load_config():
-    logger.debug("Loading configuration")
-    if not os.path.exists(CONFIG_FILE_NAME):
-        raise RaphidocException('Configuration file {} does not exist'.format(CONFIG_FILE_NAME))
+class HTMLGenerator(Generator):
+    identifier = 'html'
 
-    with open(CONFIG_FILE_NAME) as f:
-        config = yaml.load(f.read())
-        logger.debug("Configuration loaded")
-        return config
+    def process(self, pages):
+        toc = []
+        for page in pages:
+            toc += page.generate_toc()
 
-        # TODO: validate!
-        # TODO: scan for *.md, *.markdown pages that are not in raphidoc.yml
-        # TODO: resolve theme path
+        # TODO: properly and hierarchically format the toc
+        # TODO: extract (and make configurable in theme?)
+        toc_html = Template("""
+        <ul>
+            {% for x,y,z in pages %}
+            <li class="toc-{{x}}"><a href="{{y}}">{{z}}</a></li>
+            {% endfor %}
+        </ul>
+        """).render(pages=toc)
+
+        env = Environment(loader=FileSystemLoader(self.config['theme']))
+        template = env.get_template('page.html')
+
+        # Write the output
+        for page in pages:
+            raw = page.result
+            if page.toc:
+                raw = raw.replace('{{TOC}}', toc_html)
+
+            templated = template.render(content=raw)
+
+            destination_dir = os.path.join(self.output_directory,
+                                           os.path.dirname(page.output_path))
+            if not os.path.exists(destination_dir):
+                os.makedirs(destination_dir)
+            with open('{0}/{1}'.format(self.output_directory, page.output_path), 'w') as f:
+                f.write(templated)
+
+
+class PDFGenerator(Generator):
+    identifier = 'pdf'
+
+    def process(self, pages):
+        env = Environment(loader=FileSystemLoader(self.config['theme']))
+        template = env.get_template('pdf.html')
+
+        complete = ''
+        for page in pages:
+            raw = page.result
+            if page.toc:
+                # TODO: Generate!
+                pass
+            complete += raw + '\n'
+
+        tmp_html = os.path.join(self.output_directory, 'pdf.tmp.html')
+        with open(tmp_html, 'w') as f:
+            f.write(template.render(content=complete))
+
+        document = weasyprint.HTML(tmp_html).render()
+
+        # TODO: make output fle path configurable
+        pdf_destination_path = os.path.join(self.output_directory, 'index.pdf')
+        document.write_pdf(pdf_destination_path)
+        logger.info('PDF written to file://{}'.format(pdf_destination_path))

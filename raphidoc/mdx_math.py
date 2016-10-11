@@ -1,9 +1,12 @@
+import os
+import hashlib
+
 from markdown.inlinepatterns import Pattern
 from markdown.util import etree
 from markdown.extensions import Extension
 import markdown
-from hashlib import md5
-import os
+
+from .exceptions import RaphidocException
 """
 Math extension for Python-Markdown
 
@@ -21,20 +24,18 @@ BEFORE_TEX = """\\documentclass[12pt]{article}
 \\usepackage{amssymb}
 \\pagestyle{empty}
 \\begin{document}
-$"""
+\["""
 
-AFTER_TEX = """$
+AFTER_TEX = """\]
 \\end{document}
 """
 
-# TODO: make configurable
-DIRECTORY = 'output/assets'
-DIRECTORY = 'output/assets'
-
 
 class MathPattern(markdown.inlinepatterns.Pattern):
-    def __init__(self):
+    def __init__(self, output_directory, destination):
         markdown.inlinepatterns.Pattern.__init__(self, r'\$\$(.*)\$\$')
+        self.output_directory = output_directory
+        self.destination = destination
 
     def handleMatch(self, m):
         # print(m.group(2))
@@ -46,43 +47,51 @@ class MathPattern(markdown.inlinepatterns.Pattern):
         return node
 
     def generateImage(self, code):
-        digest = md5(code.encode('utf-8')).hexdigest()
-        file_name = '{}/{}'.format(DIRECTORY, digest)
-        # TODO: cleaner solutoon
-        png = "assets/{}.png".format(digest)
-        tex = file_name + ".tex"
+        digest = hashlib.md5(code.encode('utf-8')).hexdigest()
+        directory = os.path.join(self.output_directory, self.destination)
+
+        png = os.path.join(directory, digest + '.png')
+        png_link = os.path.join(self.destination, digest + '.png')
+        tex = os.path.join(directory, digest + '.tex')
 
         # if the image already exists
         if os.path.exists(png):
-            return png
+            return png_link
 
-        if not os.path.exists(DIRECTORY):
-            os.makedirs(DIRECTORY)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
         with open(tex, "w") as f:
             f.writelines([BEFORE_TEX, code, AFTER_TEX])
             f.close()
 
         compile_latex = ('latex -interaction=batchmode -output-directory={d}'
-                         ' {t} > /dev/null'.format(d=DIRECTORY, t=tex))
+                         ' {t} > /dev/null'.format(d=directory, t=tex))
         if os.system(compile_latex) != 0:
-            raise Exception('Failed to compile latex')
-        latex2png = 'dvipng -D 250 -o {f}.png -T tight {f}.dvi > /dev/null'.format(f=file_name)
+            raise RaphidocException('Failed to compile latex')
+        latex2png = 'dvipng -D 250 -o {d}/{f}.png -T tight {d}/{f}.dvi > /dev/null'.format(
+                     d=directory, f=digest)
         if os.system(latex2png) != 0:
-            raise Exception('Failed to converte to png :(')
+            raise RaphidocException('Failed to converte to png :(')
 
         # clean up
         os.remove(tex)
-        os.remove('{f}.log'.format(f=file_name))
-        os.remove('{f}.dvi'.format(f=file_name))
-        os.remove('{f}.aux'.format(f=file_name))
+        os.remove(os.path.join(directory, digest + '.log'))
+        os.remove(os.path.join(directory, digest + '.dvi'))
+        os.remove(os.path.join(directory, digest + '.aux'))
         return png
 
 
 class MathExtension(markdown.Extension):
 
+    def __init__(self, output_directory, destination='assets'):
+        markdown.Extension.__init__(self)
+        self.output_directory = output_directory
+        self.destination = destination
+
     def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns.add('math', MathPattern(), '<escape')
+        md.inlinePatterns.add('math', MathPattern(self.output_directory, self.destination),
+                              '<escape')
 
 
 def makeExtension(**kwargs):

@@ -1,8 +1,9 @@
 import click
 import logging
 import os
+import shutil
 
-from . import generator
+from .generator import HTMLGenerator, PDFGenerator
 from . import utils
 from . import __VERSION__
 
@@ -15,10 +16,11 @@ logger = logging.getLogger('raphidoc')
 @click.option('-d', '--directory', type=click.Path(file_okay=False,
               dir_okay=True, writable=True, exists=True), default='./',
               help='The project working directory (must contain raphidoc.yml)')
-def cli(verbose, directory):
+@click.pass_context
+def cli(ctx, verbose, directory):
     setup_logging(verbose)
     logger.debug("Working directory is `{}`".format(directory))
-    os.chdir(directory)
+    ctx.obj['working_directory'] = directory
 
 
 @click.command()
@@ -34,21 +36,43 @@ def clean():
 @click.command()
 @click.option('-w', '--watch', is_flag=True, default=False, help='Watch and re-generate on change')
 @click.option('-e', '--exclude', multiple=True, help='Files and directory to ignore when changed')
-def html(watch, exclude):
+@click.option('-b', '--bind', default='0.0.0.0', help='Specify alternate bind address')
+@click.option('-p', '--port', default=8000, help='Specify alternate port')
+@click.pass_context
+def html(ctx, watch, exclude, bind, port):
     logger.info('Generating html')
-    generator.generate_html()
+
+    html_generator = HTMLGenerator(ctx.obj['working_directory'])
+    html_generator.generate()
+
     if watch:
-        utils.watch(exclude, generator.generate_html, True)
+        # TODO: what if output directory changes?
+        utils.watch(exclude, html_generator.generate, ctx.obj['working_directory'], True,
+                    os.path.join('output', html_generator.identifier),
+                    bind, port)
 
 
 @click.command()
 @click.option('-w', '--watch', is_flag=True, default=False, help='Watch and re-generate on change')
 @click.option('-e', '--exclude', multiple=True, help='Files and directory to ignore when changed')
-def pdf(watch, exclude):
+@click.pass_context
+def pdf(ctx, watch, exclude):
     logger.info('Generating PDF')
-    generator.generate_pdf()
+    pdf_generator = PDFGenerator(ctx.obj['working_directory'])
+    pdf_generator.generate()
+
     if watch:
-        utils.watch(exclude, generator.generate_pdf, False)
+        # TODO: what if output directory changes?
+        utils.watch(exclude, pdf_generator.generate, ctx.obj['working_directory'], False)
+
+
+@click.command()
+@click.pass_context
+def clean(ctx):
+    logger.info('Cleaning up...')
+    # TODO: load from config?
+    # Make this "saver"
+    shutil.rmtree(os.path.join(ctx.obj['working_directory'], 'output'))
 
 
 def setup_logging(verbose):
@@ -68,7 +92,8 @@ def main():
         cli.add_command(init)
         cli.add_command(html)
         cli.add_command(pdf)
-        cli(standalone_mode=False)
+        cli.add_command(clean)
+        cli(obj={}, standalone_mode=False)
     except Exception as e:
         logger.error(e)
         logger.debug(e, exc_info=True)
