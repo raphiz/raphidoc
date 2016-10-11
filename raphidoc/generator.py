@@ -16,10 +16,11 @@ logger = logging.getLogger(__name__)
 CONFIG_FILE_NAME = 'raphidoc.yml'
 OUTPUT_DIRECTORY = 'output'
 
+
 class Page():
     def __init__(self, path, md):
         self.path = path
-        # TODO: generify!
+        # TODO: what if no html extension? What if pure html doc?
         self.output_path = path.replace('.md', '.html')
         self.md = md
 

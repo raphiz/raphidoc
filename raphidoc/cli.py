@@ -1,12 +1,9 @@
 import click
 import logging
 import os
-from . import generator
 
-import time
-from watchdog.observers import Observer
-from watchdog.events import PatternMatchingEventHandler
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from . import generator
+from . import utils
 
 logger = logging.getLogger('raphidoc')
 
@@ -33,47 +30,23 @@ def clean():
 
 
 @click.command()
-def html():
+@click.option('-w', '--watch', is_flag=True, default=False, help='Watch and re-generate on change')
+@click.option('-e', '--exclude', multiple=True, help='Files and directory to ignore when changed')
+def html(watch, exclude):
     logger.info('Generating html')
     generator.generate_html()
+    if watch:
+        utils.watch(exclude, generator.generate_html, True)
 
 
 @click.command()
+@click.option('-w', '--watch', is_flag=True, default=False, help='Watch and re-generate on change')
 @click.option('-e', '--exclude', multiple=True, help='Files and directory to ignore when changed')
-def serve(exclude):
-
-    observer = Observer()
-
-    class EventHandler(PatternMatchingEventHandler):
-        def on_any_event(self, event):
-            # Manually filter output directory - pattern does not
-            # work somehow...
-            if (event.src_path.startswith('./output')):
-                return
-            logger.debug(event)
-            logger.info('Regenerating html...')
-            generator.generate_html()
-
-    handler = EventHandler()
-    handler._ignore_patterns = exclude
-    observer.schedule(handler, './', recursive=True)
-    observer.start()
-    logger.info('Serving at :')
-    # TODO: generate for the first time
-    # TODO: serve
-    # TODO: make generic - so that it works for PDF as well!
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
-
-
-@click.command()
-def pdf():
+def pdf(watch, exclude):
     logger.info('Generating PDF')
     generator.generate_pdf()
+    if watch:
+        utils.watch(exclude, generator.generate_pdf, False)
 
 
 def setup_logging(verbose):
@@ -92,7 +65,6 @@ def main():
     try:
         cli.add_command(init)
         cli.add_command(html)
-        cli.add_command(serve)
         cli.add_command(pdf)
         cli(standalone_mode=False)
     except Exception as e:
