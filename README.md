@@ -19,10 +19,10 @@ It's not fast - It's not clean, It's not pretty - but it works :laughing:
 #         1. The canvas (page 7)
 #         2. CSS 2.1 addressing model (page 7)
 #       4. CSS design principles (page 8)
-def print_outline(bookmarks, indent=0):
-    for i, (label, (page, _, _), children) in enumerate(bookmarks, 1):
+def print_outline(bookmarks):
+    for (label, (page, _, _), children) in bookmarks:
         print('%s%d. %s (page %d)' % (
             ' ' * indent, i, label.lstrip('0123456789. '), page+1))
-        print_outline(children, indent + 2)
+        print_outline(children)
 print_outline(document.make_bookmark_tree())
 ```

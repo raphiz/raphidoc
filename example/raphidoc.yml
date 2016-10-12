@@ -1,3 +1,4 @@
+version: 1.0
 site_name: SE1 - Documentation
 pages:
    - index.md

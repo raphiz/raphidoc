@@ -9,10 +9,6 @@
 ## Heading 1.2
 
 # Heading 2
-## Heading 2.1
-### Heading 2.1.1
-
-# Heading 3
 
 [HERE](http://www.google.com)
 
@@ -30,6 +26,12 @@ std::out << x << y
 What is `hello`? $$e^e$$
 
 $$\frac{-b \pm \sqrt{b^2 -4ac} }{2a}$$
+
+## Heading 2.1
+### Heading 2.1.1
+
+# Heading 3
+
 
 
 ```python
