@@ -38,7 +38,6 @@ class MathPattern(markdown.inlinepatterns.Pattern):
         self.destination = destination
 
     def handleMatch(self, m):
-        # print(m.group(2))
         node = markdown.util.etree.Element('img')
         code = m.group(2).strip()
         node.set('src', self.generateImage(code))
@@ -79,7 +78,7 @@ class MathPattern(markdown.inlinepatterns.Pattern):
         os.remove(os.path.join(directory, digest + '.log'))
         os.remove(os.path.join(directory, digest + '.dvi'))
         os.remove(os.path.join(directory, digest + '.aux'))
-        return png
+        return png_link
 
 
 class MathExtension(markdown.Extension):
