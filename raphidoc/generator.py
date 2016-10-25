@@ -10,6 +10,7 @@ from lxml import html
 from jinja2 import Template, Environment, FileSystemLoader
 
 from . import mdx_math
+from . import mdx_captions
 from .config import load_config
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class Page():
                               namespaceHTMLElements=False).getroot()
         for heading in tree.cssselect('h1, h2, h3, h4, h5, h6, h8'):
             url = '{0}#{1}'.format(self.output_path, heading.get('id'))
-            title = html.tostring(heading, method='text').decode('utf-8').strip()
+            title = html.tostring(heading, encoding='UTF-8', method='text').decode('utf-8').strip()
             toc.append((heading.tag, url, title, -1))
         return toc
 
@@ -53,6 +54,7 @@ class Generator:
         self.output_directory = os.path.join(self.working_directory, 'output', self.identifier)
         # TODO: Configure math via config (eg. additional packages, output directory etc.)
         self.md = markdown.Markdown(extensions=[mdx_math.MathExtension(self.output_directory),
+                                                mdx_captions.FigcaptionExtension(),
                                                 'markdown.extensions.def_list',
                                                 'markdown.extensions.codehilite',
                                                 'markdown.extensions.admonition',
@@ -110,7 +112,7 @@ class Generator:
         # TODO: extract (and make configurable in theme?)
 
         return Template("""
-        <ul>
+        <ul class="toc">
             {% for w, x,y,z in pages %}
             <li class="toc-{{w}}"><a href="{{x}}">{{y}}</a>
             {%if page_numbers %}<span class="page_number">{{z}}</span>{% endif %}</li>
