@@ -1,5 +1,6 @@
 import os
 import hashlib
+import logging
 
 from markdown.inlinepatterns import Pattern
 from markdown.util import etree
@@ -30,10 +31,12 @@ AFTER_TEX = """\]
 \\end{document}
 """
 
+logger = logging.getLogger(__name__)
+
 
 class MathPattern(markdown.inlinepatterns.Pattern):
     def __init__(self, output_directory, destination):
-        markdown.inlinepatterns.Pattern.__init__(self, r'\$\$(.*)\$\$')
+        markdown.inlinepatterns.Pattern.__init__(self, r'\$\$(((?!\$\$).)*)\$\$')
         self.output_directory = output_directory
         self.destination = destination
 
@@ -70,6 +73,7 @@ class MathPattern(markdown.inlinepatterns.Pattern):
             raise RaphidocException('Failed to compile latex')
         latex2png = 'dvipng -D 250 -o {d}/{f}.png -T tight {d}/{f}.dvi > /dev/null'.format(
                      d=directory, f=digest)
+        # TODO: Capture stdout & log on error!
         if os.system(latex2png) != 0:
             raise RaphidocException('Failed to converte to png :(')
 
