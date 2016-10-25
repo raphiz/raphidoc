@@ -1,8 +1,10 @@
 import os
 import hashlib
 import logging
+import re
 
 from markdown.inlinepatterns import Pattern
+from markdown.blockprocessors import BlockProcessor
 from markdown.util import etree
 from markdown.extensions import Extension
 import markdown
@@ -25,64 +27,91 @@ BEFORE_TEX = """\\documentclass[12pt]{article}
 \\usepackage{amssymb}
 \\pagestyle{empty}
 \\begin{document}
-\["""
+"""
 
-AFTER_TEX = """\]
+AFTER_TEX = """
 \\end{document}
 """
 
 logger = logging.getLogger(__name__)
 
 
-class MathPattern(markdown.inlinepatterns.Pattern):
+def generateImage(code, mode, output_directory, destination):
+    digest = hashlib.md5(str(mode + code).encode('utf-8')).hexdigest()
+    directory = os.path.join(output_directory, destination)
+
+    png = os.path.join(directory, digest + '.png')
+    png_link = os.path.join(destination, digest + '.png')
+    tex = os.path.join(directory, digest + '.tex')
+
+    # if the image already exists
+    if os.path.exists(png):
+        return png_link
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(tex, "w") as f:
+        f.writelines([BEFORE_TEX, code, AFTER_TEX])
+        f.close()
+
+    compile_latex = ('latex -interaction=batchmode -output-directory={d}'
+                     ' {t} > /dev/null'.format(d=directory, t=tex))
+    if os.system(compile_latex) != 0:
+        raise RaphidocException('Failed to compile latex')
+    latex2png = 'dvipng -D 250 -o {d}/{f}.png -T tight {d}/{f}.dvi > /dev/null'.format(
+                 d=directory, f=digest)
+    # TODO: Capture stdout & log on error!
+    if os.system(latex2png) != 0:
+        raise RaphidocException('Failed to converte to png :(')
+
+    # clean up
+    os.remove(tex)
+    os.remove(os.path.join(directory, digest + '.log'))
+    os.remove(os.path.join(directory, digest + '.dvi'))
+    os.remove(os.path.join(directory, digest + '.aux'))
+    return png_link
+
+
+class MathInlinePattern(markdown.inlinepatterns.Pattern):
+
     def __init__(self, output_directory, destination):
         markdown.inlinepatterns.Pattern.__init__(self, r'\$\$(((?!\$\$).)*)\$\$')
+
         self.output_directory = output_directory
         self.destination = destination
 
     def handleMatch(self, m):
-        node = markdown.util.etree.Element('img')
+        node = etree.Element('img')
         code = m.group(2).strip()
-        node.set('src', self.generateImage(code))
+        node.set('src', generateImage('$${0}$$'.format(code), 'inline', self.output_directory, self.destination))
         node.set('alt', code)
         node.set('class', 'inline-math')
         return node
 
-    def generateImage(self, code):
-        digest = hashlib.md5(code.encode('utf-8')).hexdigest()
-        directory = os.path.join(self.output_directory, self.destination)
 
-        png = os.path.join(directory, digest + '.png')
-        png_link = os.path.join(self.destination, digest + '.png')
-        tex = os.path.join(directory, digest + '.tex')
+class MathBlockProcessor(BlockProcessor):
 
-        # if the image already exists
-        if os.path.exists(png):
-            return png_link
+    RE = re.compile(r'(\\\[)(?P<formula>\n(.*\n?)*)(\\\])')
 
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+    def __init__(self, parser, output_directory, destination):
+        BlockProcessor.__init__(self, parser)
 
-        with open(tex, "w") as f:
-            f.writelines([BEFORE_TEX, code, AFTER_TEX])
-            f.close()
+        self.output_directory = output_directory
+        self.destination = destination
 
-        compile_latex = ('latex -interaction=batchmode -output-directory={d}'
-                         ' {t} > /dev/null'.format(d=directory, t=tex))
-        if os.system(compile_latex) != 0:
-            raise RaphidocException('Failed to compile latex')
-        latex2png = 'dvipng -D 250 -o {d}/{f}.png -T tight {d}/{f}.dvi > /dev/null'.format(
-                     d=directory, f=digest)
-        # TODO: Capture stdout & log on error!
-        if os.system(latex2png) != 0:
-            raise RaphidocException('Failed to converte to png :(')
+    def test(self, parent, block):
+        return bool(self.RE.fullmatch(block))
 
-        # clean up
-        os.remove(tex)
-        os.remove(os.path.join(directory, digest + '.log'))
-        os.remove(os.path.join(directory, digest + '.dvi'))
-        os.remove(os.path.join(directory, digest + '.aux'))
-        return png_link
+    def run(self, parent, blocks):
+        raw_block = blocks.pop(0)
+        code = self.RE.search(raw_block).group('formula')
+        node = etree.Element("img")
+        node.set('src', generateImage('\\[\{0}\\]'.format(code), 'inline',
+                 self.output_directory, self.destination))
+        node.set('alt', code)
+        node.set('class', 'block-math')
+        parent.append(node)
 
 
 class MathExtension(markdown.Extension):
@@ -93,8 +122,12 @@ class MathExtension(markdown.Extension):
         self.destination = destination
 
     def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns.add('math', MathPattern(self.output_directory, self.destination),
+        md.inlinePatterns.add('inlinemath',
+                              MathInlinePattern(self.output_directory, self.destination),
                               '<escape')
+        md.parser.blockprocessors.add('blockmath',
+                                      MathBlockProcessor(md.parser, self.output_directory,
+                                                         self.destination), '_begin')
 
 
 def makeExtension(**kwargs):
