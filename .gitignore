@@ -3,3 +3,5 @@ raphidoc.egg-info
 example/output/
 __pycache__
 *.pyc
+.cache/
+node_modules
