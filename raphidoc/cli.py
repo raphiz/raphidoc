@@ -24,13 +24,29 @@ def cli(ctx, verbose, directory):
 
 
 @click.command()
-def init():
-    logger.info('Not yet implemented - will create raphidoc.yml')
+@click.pass_context
+def init(ctx):
+    target = ctx.obj['working_directory']
+    if len(os.listdir(target)) != 0:
+        logger.error("The target directory {0} is not empty!".format(target))
+        return
+    with open(os.path.join(target, 'raphidoc.yml'), 'w') as f:
+        f.write("""version: 1.0
+title: %s
+author: John Doe
 
+pages:
+   - index.md
 
-@click.command()
-def clean():
-    logger.info('Not yet implemented - will create raphidoc.yml')
+assets:
+    - images/
+
+theme: raphi_theme""" % os.path.basename(target))
+    with open(os.path.join(target, 'index.md'), 'w') as f:
+        f.write("# Hello World! \n\n {{TOC}} \n\n This is Raphidoc!\n")
+    with open(os.path.join(target, '.gitignore'), 'w') as f:
+        f.write("output/\n")
+    os.mkdir(os.path.join(target, 'images'))
 
 
 @click.command()
@@ -70,8 +86,6 @@ def pdf(ctx, watch, exclude):
 @click.pass_context
 def clean(ctx):
     logger.info('Cleaning up...')
-    # TODO: load from config?
-    # Make this "saver"
     shutil.rmtree(os.path.join(ctx.obj['working_directory'], 'output'))
 
 
