@@ -1,2 +1,2 @@
 click_completion
-psutil
+pytest
