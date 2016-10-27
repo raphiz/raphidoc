@@ -84,7 +84,7 @@ class MathInlinePattern(markdown.inlinepatterns.Pattern):
     def handleMatch(self, m):
         node = etree.Element('img')
         code = m.group(2).strip()
-        node.set('src', generateImage('$${0}$$'.format(code), 'inline', self.output_directory, self.destination))
+        node.set('src', generateImage('${0}$'.format(code), 'inline', self.output_directory, self.destination))
         node.set('alt', code)
         node.set('class', 'inline-math')
         return node
