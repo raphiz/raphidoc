@@ -15,6 +15,11 @@ Inline Math is $$e=mc^2$$...
 
 But the following thing is a math block:
 
+!!! warning
+
+    DONT DO THIS!
+
+
 \[
 \frac{ n! }{ r! \left( n-r \right)! }
 \]
