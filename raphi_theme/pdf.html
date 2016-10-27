@@ -8,6 +8,28 @@
         <link rel="stylesheet" href="assets/pdf.css">
     </head>
     <body>
-        {{content}}
+        <div class="title-page">
+            <div class="title-page-institute">
+                {{config.institute}}
+            </div>
+
+            <div class="title-page-title">
+                {{config.title}}
+            </div>
+
+            <div class="title-page-subtitle">
+                {{config.subtitle}}
+            </div>
+
+
+            <div class="title-page-details">
+                <p>
+                    {{config.author}}
+                </p>
+            </div>
+        </div>
+        <div>
+            {{content}}
+        </div>
     </body>
 </html>

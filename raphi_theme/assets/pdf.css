@@ -1,3 +1,21 @@
+.title-page{
+    text-align: center!important;
+    padding-top: 7rem;
+}
+.title-page-title {
+    padding-top: 7rem;
+    font-size: 2rem;
+}
+
+.title-page-subtitle {
+    padding-top: 1rem;
+    font-size: 1.5rem;
+}
+
+.title-page-details {
+    padding-top: 25rem;
+}
+
 .toc a, .page_number {
     text-decoration: none;
     color: black;
@@ -50,6 +68,6 @@ html{
     }
 
     @bottom-right {
-        content: "Seite " counter(page) " von " counter(pages);
+        content: "" counter(page) "/" counter(pages);
     }
 }

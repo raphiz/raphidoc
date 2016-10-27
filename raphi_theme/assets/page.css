@@ -7,4 +7,22 @@
     max-width: 800px;
     margin-left: auto;
     margin-right: auto;
+    margin-top: 3rem;
+}
+
+header > a,
+header > a:visited,
+header > a:hover {
+    text-decoration: none;
+    color: black;
+}
+
+header {
+    text-align: center;
+    top: 0;
+    background-color: white;
+    width: 800px;
+    position: fixed;
+    padding: 0.4rem 0;
+    border-bottom: 3px solid #eee;
 }

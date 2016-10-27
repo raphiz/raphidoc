@@ -1,7 +1,7 @@
-html {
-    font-family: 'Open Sans';
+body {
+  line-height:1.5;
+  font-family: 'Merriweather', Georgia, 'Times New Roman', Times, serif;
 }
-
 
 .codehilite {
     background-color: rgb(247, 247, 247);
@@ -45,13 +45,28 @@ hr {
 .note {
     background-color: #f0db4f;
 }
-.note > .admonition-title {
-
+.note > .admonition-title::before {
+  font-weight: normal;
+  font-family: FontAwesome, 'Merriweather', Georgia, 'Times New Roman', Times, serif;
+  content: "\f249  ";
 }
-.todo {
+
+.todo,
+.warning {
     background-color: rgb(250, 238, 233);
 }
-.todo > .admonition-title {
+.todo > .admonition-title::before,
+.warning > .admonition-title::before {
+  font-weight: normal;
+  font-family: FontAwesome, 'Merriweather', Georgia, 'Times New Roman', Times, serif;
+  content: "\f03a  ";
+}
+.warning > .admonition-title::before {
+    content: "\f071  ";
+
+}
+.todo > .admonition-title,
+.warning > .admonition-title {
     color: rgb(201, 88, 35);
 }
 

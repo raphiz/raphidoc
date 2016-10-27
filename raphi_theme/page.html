@@ -3,13 +3,19 @@
     <head>
         <meta charset="utf-8">
         <title>{{site_name}}</title>
-        <link rel="stylesheet" href="/assets/github.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
         <link rel="stylesheet" href="/assets/style.css">
         <link rel="stylesheet" href="/assets/page.css">
+        <link rel="stylesheet" href="/assets/github.css">
     </head>
     <body>
         <div class="wrapper">
-            {{content}}
+            <header>
+                <a href="{{ROOT_PATH}}">{{config.title}}</a>
+            </header>
+            <main>
+                {{content}}
+            </main>
         </div>
     </body>
 </html>
