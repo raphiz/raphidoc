@@ -1,7 +1,46 @@
-h1 {
-    -weasy-string-set: chapter "Current chapter: " content();
+.toc a, .page_number {
+    text-decoration: none;
+    color: black;
+    background-color: white;
+}
+ul.toc li {
+    clear: both;
+    margin-bottom: 0.8rem;
 }
 
+
+ul.toc li a:first-child {
+	float: left;
+	padding: 0 .4em 0 0;
+	margin: 0;
+}
+ul.toc li a + span {
+	float: right;
+	padding: 0 0 0 .4em;
+	margin: 0;
+}
+
+ul.toc li:after {
+	content: "";
+	display: block;
+	overflow: hidden;
+	height: 1em;
+	border-bottom: 1px dotted;
+    z-index: -1;
+}
+
+h1 {
+    page-break-before: always;
+}
+
+hr {
+    border: none;
+    page-break-before: always;
+}
+
+html{
+    -weasy-hyphens: auto;
+}
 @page {
     size: A4;
     margin: 1cm;

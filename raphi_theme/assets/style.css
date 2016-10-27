@@ -1,6 +1,99 @@
+html {
+    font-family: 'Open Sans';
+}
+
+
+.codehilite {
+    background-color: rgb(247, 247, 247);
+    padding: 0.5rem 1rem;
+}
+
+figure {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+img {
+    max-width: 100%;
+}
+figure > figcaption {
+    font-size: 0.8rem;
+}
+
+a, a:visited, a:hover {
+    color: rgb(64, 120, 192);
+}
+a:hover {
+    text-decoration: underline;
+}
+
+hr {
+    /*HR is used for page separation in PDF*/
+    border:none;
+}
+/* Begin admonition styles */
+.admonition {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.25rem 1rem;
+    background-color: rgba(64, 77, 92, 0.1);
+}
+.admonition > .admonition-title {
+   font-weight: bold;
+}
+.note {
+    background-color: #f0db4f;
+}
+.note > .admonition-title {
+
+}
+.todo {
+    background-color: rgb(250, 238, 233);
+}
+.todo > .admonition-title {
+    color: rgb(201, 88, 35);
+}
+
+/* End admonition styles */
+
+/* Begin toc styles */
+.toc {
+    list-style: none;
+    padding: 0;
+}
+.toc > .toc-h2 {
+    padding-left: 1rem;
+}
+.toc > .toc-h3 {
+    padding-left: 2rem;
+}
+.toc > .toc-h4 {
+    padding-left: 3rem;
+}
+.toc > .toc-h5 {
+    padding-left: 4rem;
+}
+.toc > .toc-h6 {
+    padding-left: 5rem;
+}
+/* end toc styles */
+
+/* TODO: adapt! */
 .inline-math {
   height: 1rem;
 }
 .emoji {
     max-height: 1em;
+    max-width: 1em;
+}
+
+/* Tables */
+table, tr, td, th {
+    border-collapse: collapse;
+    border: 1px solid gray;
+}
+td, th {
+    padding: 0.5rem;
+    vertical-align: top;
 }
