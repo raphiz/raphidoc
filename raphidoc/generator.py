@@ -5,7 +5,6 @@ import shutil
 
 import markdown
 import html5lib
-import weasyprint
 from lxml import html
 from jinja2 import Template, Environment, FileSystemLoader
 
@@ -177,6 +176,7 @@ class PDFGenerator(Generator):
         tmp_html = os.path.join(self.output_directory, 'pdf.tmp.html')
         with open(tmp_html, 'w') as f:
             f.write(template.render(content=complete))
+        import weasyprint
         return weasyprint.HTML(tmp_html).render()
 
     def process(self, pages, toc):
