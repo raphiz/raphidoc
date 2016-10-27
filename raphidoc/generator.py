@@ -135,7 +135,7 @@ class HTMLGenerator(Generator):
             if page.toc:
                 raw = raw.replace('{{TOC}}', toc_html)
 
-            templated = template.render(content=raw)
+            templated = template.render(config=self.config, content=raw)
 
             destination_dir = os.path.join(self.output_directory,
                                            os.path.dirname(page.output_path))
@@ -175,7 +175,7 @@ class PDFGenerator(Generator):
 
         tmp_html = os.path.join(self.output_directory, 'pdf.tmp.html')
         with open(tmp_html, 'w') as f:
-            f.write(template.render(content=complete))
+            f.write(template.render(config=self.config, content=complete))
         import weasyprint
         return weasyprint.HTML(tmp_html).render()
 
