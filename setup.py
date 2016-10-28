@@ -23,7 +23,7 @@ setup(
     test_suite='tests',
     entry_points={
         'console_scripts':
-            ['raphidoc = raphidoc.cli:main']
+            ['raphidoc = raphidoc.__main__:main']
     },
     classifiers=[
         'Programming Language :: Python',
