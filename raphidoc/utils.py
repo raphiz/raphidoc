@@ -1,5 +1,6 @@
 import time
 import os
+import subprocess
 import logging
 
 from watchdog.observers import Observer
@@ -7,6 +8,40 @@ from watchdog.events import PatternMatchingEventHandler
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 logger = logging.getLogger(__name__)
+
+
+def is_in_path(*args):
+    """
+    Checks wheather there the programms "node" and "npm" are in the path.
+    If so, returns True - otherwise False.
+    """
+    binaries = {binary: False for binary in args}
+    for path in os.environ["PATH"].split(os.pathsep):
+        path = path.strip('"')
+        for binary in args:
+            if os.path.exists(os.path.join(path, binary)):
+                binaries[binary] = True
+    return all(binaries.values())
+
+
+def wkhtmltopdf(config, source, destination):
+    # Setup command
+    flags = config.pop('flags', [])
+    command = ['--{}'.format(flag) for flag in flags]
+    for k, v in config.items():
+        command.append('--{}'.format(k))
+        command.append('{}'.format(v))
+    command.append(source)
+    command.append(destination)
+    command.insert(0, 'wkhtmltopdf')
+    p1 = subprocess.Popen(command,
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
+    stdout, stderr = p1.communicate()
+
+    # TODO: proper error handling & log output properly!
+    print(stdout.decode())
+    print(stderr.decode())
 
 
 class EventHandler(PatternMatchingEventHandler):
