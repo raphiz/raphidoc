@@ -34,7 +34,6 @@ def svg_rewrite(svg):
         ref_id = use.get('href')[1:]
         ref = tree.find('.//path[@id=\'%s\']' % ref_id)
         use.attrib.pop('href')
-
         use.tag = ref.tag
         transform = use.attrib.pop('transform', '')
 
@@ -51,6 +50,7 @@ def svg_rewrite(svg):
             elif key != 'id':
                 use.attrib[key] = value
         use.attrib['transform'] = transform
+    tree.remove(tree.find('defs'))
     return etree.tostring(tree).decode()
 
 
@@ -96,7 +96,7 @@ def install_dependencies(cache_directory):
         logger.info('Mathjax-node installed')
 
 
-def compile_latex(formula, inline, cache_directory, after_error=False):
+def compile_latex(formula, inline, cache_directory, no_cache=False, after_error=False):
     """
     Compiles the given Tex formula and returns it as a SVG.
     If the formula is invalid, an SVG is returned as well - but it contains an error message.
@@ -106,11 +106,12 @@ def compile_latex(formula, inline, cache_directory, after_error=False):
         return '<span class="missing-formula">{0}</span>'.format(formula)
 
     digest = hashlib.md5(str(str(inline) + formula).encode('utf-8')).hexdigest()
-    cached = os.path.join(cache_directory, '{}.svg'.format(digest))
-    if os.path.exists(cached):
-        logger.debug('Loading formula {} from cache'.format(formula))
-        with open(cached, 'r') as f:
-            return f.read()
+    if not no_cache:
+        cached = os.path.join(cache_directory, '{}.svg'.format(digest))
+        if os.path.exists(cached):
+            logger.debug('Loading formula {} from cache'.format(formula))
+            with open(cached, 'r') as f:
+                return f.read()
     try:
         logger.debug('Rendering formula {}'.format(formula))
         program = """var mjAPI = require("mathjax-node/lib/mj-single.js");
@@ -124,14 +125,15 @@ def compile_latex(formula, inline, cache_directory, after_error=False):
         """ % (json.dumps(formula), "inline-TeX" if inline else "TeX")
         svg = run_in_node(program, cache_directory)
         svg = svg_rewrite(svg)
-        with open(cached, 'w') as f:
-            f.write(svg)
+        if not no_cache:
+            with open(cached, 'w') as f:
+                f.write(svg)
         return svg
     except Exception as e:
         if after_error:
             raise e
         install_dependencies(cache_directory)
-        return compile_latex(formula, inline, cache_directory, True)
+        return compile_latex(formula, inline, cache_directory, no_cache, after_error=True)
 
 
 class MathInlinePattern(markdown.inlinepatterns.Pattern):
