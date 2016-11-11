@@ -4,6 +4,7 @@ import logging
 import subprocess
 import re
 import json
+import hashlib
 
 from markdown.inlinepatterns import Pattern
 from markdown.blockprocessors import BlockProcessor
@@ -12,6 +13,7 @@ from markdown.extensions import Extension
 import markdown
 
 from .exceptions import RaphidocException
+from . import utils
 
 """
 Math extension for Python-Markdown using Node & MathJax.
@@ -20,94 +22,123 @@ Math extension for Python-Markdown using Node & MathJax.
 logger = logging.getLogger(__name__)
 
 # Global - very ugly, but used to improve performace
-INSTALLED = None
+FAILED_INSTALLATION = False
 
 
-def node_installed():
-    """
-    Checks wheather there the programms "node" and "npm" are in the path.
-    If so, returns True - otherwise False.
-    """
-    node = False
-    npm = False
-    for path in os.environ["PATH"].split(os.pathsep):
-        path = path.strip('"')
-        if os.path.exists(os.path.join(path, 'npm')):
-            npm = True
-        if os.path.exists(os.path.join(path, 'node')):
-            node = True
-        if node and npm:
-            return True
-    return False
+def svg_rewrite(svg):
+    svg = re.sub('(xmlns(\:[a-z]*)?="[^"]+")', '', svg)
+    svg = re.sub('xlink:href', 'href', svg)
+
+    tree = etree.fromstring(svg)
+    for use in tree.iter('use'):
+        ref_id = use.get('href')[1:]
+        ref = tree.find('.//path[@id=\'%s\']' % ref_id)
+        use.attrib.pop('href')
+
+        use.tag = ref.tag
+        transform = use.attrib.pop('transform', '')
+
+        x = use.attrib.pop('x', 0)
+        y = use.attrib.pop('y', 0)
+        transform += 'translate(%s, %s)' % (x, y)
+
+        if len(use.attrib) > 0:
+            raise RaphidocException('Unexpected attribute(s) on "use" element found: %s'
+                                    % [k for k in ref.attrib.keys()])
+        for key, value in ref.attrib.items():
+            if key == 'translate':
+                translate += value
+            elif key != 'id':
+                use.attrib[key] = value
+        use.attrib['transform'] = transform
+    return etree.tostring(tree).decode()
 
 
-def run_in_node(program):
+def run_in_node(program, cache_directory):
     """
     Runs the given program in node and returns *only* it's stdout.
     Any errors will be ignored (except exceptions)
     """
     p1 = subprocess.Popen('node',
+                          cwd=cache_directory,
                           stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE)
 
     stdout, stderr = p1.communicate(program.encode())
+    if p1.returncode != 0:
+        raise RaphidocException("Failed to convert math formula via node.\n{0}".format(
+                                stderr.decode()))
     return stdout.decode()
 
 
-def install_dependencies():
-    # TODO: Run in CWD
-    # TODO: shortcut: if CWD contains a folder node_modules/mathjax-node, log info and skip
-    global INSTALLED
-    if not node_installed():
-        INSTALLED = False
-        return INSTALLED
+def install_dependencies(cache_directory):
+    global FAILED_INSTALLATION
+    logger.info('checking node installation')
+    if not utils.is_in_path('node', 'npm'):
+        logger.warning('Could not find npm and/or node in PATH')
+        FAILED_INSTALLATION = True
+        return
+    if not os.path.exists(cache_directory):
+        os.makedirs(cache_directory)
+    logger.info('installing mathjax-node')
+    proc = subprocess.Popen(['npm', 'install', 'mathjax-node'],
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            cwd=cache_directory)
+    ret = proc.wait(50)
 
-    # ret = subprocess.call(['npm', 'install', 'mathjax-node'], timeout=50)
-    # INSTALLED = ret == 0
-    # return INSTALLED
-    INSTALLED = True
-    return INSTALLED
+    FAILED_INSTALLATION = ret != 0
+    if FAILED_INSTALLATION:
+        logger.warning('Failed to install node module `mathjax-node`')
+    else:
+        logger.info('Mathjax-node installed')
 
 
-def compile_latex(formula, inline=False):
+def compile_latex(formula, inline, cache_directory, after_error=False):
     """
     Compiles the given Tex formula and returns it as a SVG.
     If the formula is invalid, an SVG is returned as well - but it contains an error message.
     (See MathJax for details)
     """
-    if INSTALLED is None:
-        install_dependencies()
+    if FAILED_INSTALLATION:
+        return '<span class="missing-formula">{0}</span>'.format(formula)
 
-    if not INSTALLED:
-        logger.warning("MathJax or Node is not installed!")
-        return formula
-
-    program = """var mjAPI = require("mathjax-node/lib/mj-single.js");
-    mjAPI.typeset({
-      math: %s,
-      format: "%s", // "TeX", "inline-TeX", "MathML"
-      svg:true
-    }, function (data) {
-        console.log(data.svg);
-    });
-    """ % (json.dumps(formula), "inline-TeX" if inline else "TeX")
-    return run_in_node(program)
-
-
-def base64_image_url(svg):
-    return 'data:image/svg+xml;charset=utf-8;base64,' + base64.b64encode(svg.encode()).decode()
+    digest = hashlib.md5(str(str(inline) + formula).encode('utf-8')).hexdigest()
+    cached = os.path.join(cache_directory, '{}.svg'.format(digest))
+    if os.path.exists(cached):
+        logger.debug('Loading formula {} from cache'.format(formula))
+        with open(cached, 'r') as f:
+            return f.read()
+    try:
+        logger.debug('Rendering formula {}'.format(formula))
+        program = """var mjAPI = require("mathjax-node/lib/mj-single.js");
+        mjAPI.typeset({
+          math: %s,
+          format: "%s", // "TeX", "inline-TeX", "MathML"
+          svg:true
+        }, function (data) {
+            console.log(data.svg);
+        });
+        """ % (json.dumps(formula), "inline-TeX" if inline else "TeX")
+        svg = run_in_node(program, cache_directory)
+        svg = svg_rewrite(svg)
+        with open(cached, 'w') as f:
+            f.write(svg)
+        return svg
+    except Exception as e:
+        if after_error:
+            raise e
+        install_dependencies(cache_directory)
+        return compile_latex(formula, inline, cache_directory, True)
 
 
 class MathInlinePattern(markdown.inlinepatterns.Pattern):
 
     def handleMatch(self, m):
-        # TODO: Allow to fully inline SVG - via config?
-        node = etree.Element('img')
         code = m.group(2).strip()
-        node.set('src', base64_image_url(compile_latex(code, True)))
-        node.set('alt', code)
-        node.set('class', 'inline-math')
+        node = etree.fromstring(compile_latex(code, True, self.cache_directory))
         return node
 
 
@@ -121,25 +152,24 @@ class MathBlockProcessor(BlockProcessor):
     def run(self, parent, blocks):
         raw_block = blocks.pop(0)
         code = self.RE.search(raw_block).group('formula')
-        node = etree.Element("img")
-        node.set('src', base64_image_url(compile_latex(code, False)))
-        node.set('alt', code)
-        node.set('class', 'block-math')
+        node = etree.fromstring(compile_latex(code, False, self.cache_directory))
         parent.append(node)
+        return node
 
 
 class MathExtension(markdown.Extension):
 
     def __init__(self, output_directory):
         markdown.Extension.__init__(self)
-        self.output_directory = output_directory
+        self.cache_directory = os.path.join(output_directory, '.cache')
 
     def extendMarkdown(self, md, md_globals):
-        md.inlinePatterns.add('inlinemath',
-                              MathInlinePattern(r'\$\$(((?!\$\$).)*)\$\$'),
-                              '<escape')
-        md.parser.blockprocessors.add('blockmath',
-                                      MathBlockProcessor(md.parser), '_begin')
+        inline = MathInlinePattern(r'\$\$(((?!\$\$).)*)\$\$')
+        inline.cache_directory = self.cache_directory
+        md.inlinePatterns.add('inlinemath', inline, '<escape')
+        block = MathBlockProcessor(md.parser)
+        block.cache_directory = self.cache_directory
+        md.parser.blockprocessors.add('blockmath', block, '_begin')
 
 
 def makeExtension(**kwargs):
