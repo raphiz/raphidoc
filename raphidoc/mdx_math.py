@@ -1,15 +1,12 @@
 import os
-import base64
 import logging
 import subprocess
 import re
 import json
 import hashlib
 
-from markdown.inlinepatterns import Pattern
 from markdown.blockprocessors import BlockProcessor
 from markdown.util import etree
-from markdown.extensions import Extension
 import markdown
 
 from .exceptions import RaphidocException
@@ -45,6 +42,7 @@ def svg_rewrite(svg):
             raise RaphidocException('Unexpected attribute(s) on "use" element found: %s'
                                     % [k for k in ref.attrib.keys()])
         for key, value in ref.attrib.items():
+            # TODO: BUG HERE?!
             if key == 'translate':
                 translate += value
             elif key != 'id':
