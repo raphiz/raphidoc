@@ -125,7 +125,6 @@ def test_compile_latex():
 
 
 def test_compile_latex_error():
-    print(mdx_math.compile_latex('e^^', False, CACHE_DIRECTORY, no_cache=True))
     assert mdx_math.compile_latex('e^^', False, CACHE_DIRECTORY, no_cache=True) == """<svg focusable="false" height="4.509ex" role="img" style="vertical-align: -1.838ex;" viewBox="-5 -1150.1 19248.6 1941.5" width="44.707ex">
 <g fill="currentColor" stroke="currentColor" stroke-width="0" transform="matrix(1 0 0 -1 0 0)">
 <rect fill="rgb(255, 255, 136)" height="1736" stroke="none" width="19238" x="0" y="-675" />
