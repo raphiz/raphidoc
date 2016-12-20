@@ -2,8 +2,6 @@ version: 1.0
 
 title: Software Engineering 1
 subtitle: Herbstsemester 2016
-author: Raphael Zimmermann
-institute: HSR Hochschule für Technik Rapperswil
 
 pages:
    - index.md

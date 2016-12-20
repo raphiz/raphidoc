@@ -22,8 +22,28 @@ def load_config(working_directory):
 
         # Resolve paths
         config['theme'] = os.path.abspath(os.path.join(working_directory, config['theme']))
+
+        # Override with theme defaults - if exists
+        theme_config_path = os.path.join(config['theme'], 'raphidoc.yml')
+        if os.path.exists(theme_config_path):
+            with open(theme_config_path) as f:
+                theme_config = yaml.load(f)
+                config = deepupdate(theme_config, config)
         return config
 
         # TODO: validate (JSON Schema)
         # TODO: scan for *.md, *.markdown pages that are not in raphidoc.yml
         # TODO: resolve theme path
+
+
+def deepupdate(original, update):
+    """
+    Recursively update a dict.
+    Subdict's won't be overwritten but also updated.
+    """
+    for key, value in original.items():
+        if key not in update:
+            update[key] = value
+        elif isinstance(value, dict):
+            deepupdate(value, update[key])
+    return update
