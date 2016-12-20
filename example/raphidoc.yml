@@ -3,6 +3,8 @@ version: 1.0
 title: Software Engineering 1
 subtitle: Herbstsemester 2016
 
+pdf-filename: demo.pdf
+
 pages:
    - index.md
    - sub/index.md
@@ -11,4 +13,5 @@ pages:
 assets:
     - images/stages.png
     - stuff/
+
 theme: ../raphi_theme/

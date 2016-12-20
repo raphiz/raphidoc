@@ -5,7 +5,7 @@ body {
 
 .codehilite {
     background-color: rgb(247, 247, 247);
-    padding: 0.5rem 1rem;
+    padding: 0.5em 1em;
 }
 
 figure {
@@ -18,7 +18,7 @@ img {
     max-width: 100%;
 }
 figure > figcaption {
-    font-size: 0.8rem;
+    font-size: 0.8em;
 }
 
 a, a:visited, a:hover {
@@ -34,9 +34,9 @@ hr {
 }
 /* Begin admonition styles */
 .admonition {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-    padding: 0.25rem 1rem;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    padding: 0.25em 1em;
     background-color: rgba(64, 77, 92, 0.1);
 }
 .admonition > .admonition-title {
@@ -78,25 +78,25 @@ hr {
     padding: 0;
 }
 .toc > .toc-h2 {
-    padding-left: 1rem;
+    padding-left: 1em;
 }
 .toc > .toc-h3 {
-    padding-left: 2rem;
+    padding-left: 2em;
 }
 .toc > .toc-h4 {
-    padding-left: 3rem;
+    padding-left: 3em;
 }
 .toc > .toc-h5 {
-    padding-left: 4rem;
+    padding-left: 4em;
 }
 .toc > .toc-h6 {
-    padding-left: 5rem;
+    padding-left: 5em;
 }
 /* end toc styles */
 
 /* TODO: adapt! */
 .inline-math {
-  height: 1rem;
+  height: 1em;
 }
 .emoji {
     max-height: 1em;
@@ -109,6 +109,6 @@ table, tr, td, th {
     border: 1px solid gray;
 }
 td, th {
-    padding: 0.5rem;
+    padding: 0.5em;
     vertical-align: top;
 }

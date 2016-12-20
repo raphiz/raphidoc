@@ -8,6 +8,7 @@ import html5lib
 from lxml import html
 from jinja2 import Template, Environment, FileSystemLoader
 
+from . import utils
 from . import mdx_math
 from . import mdx_captions
 from .config import load_config
@@ -38,7 +39,7 @@ class Page():
         for heading in tree.cssselect('h1, h2, h3, h4, h5, h6, h8'):
             url = '{0}#{1}'.format(self.output_path, heading.get('id'))
             title = html.tostring(heading, encoding='UTF-8', method='text').decode('utf-8').strip()
-            toc.append((heading.tag, url, title, -1))
+            toc.append((heading.tag, url, title))
         return toc
 
 
@@ -112,9 +113,11 @@ class Generator:
 
         return Template("""
         <ul class="toc">
-            {% for w, x,y,z in pages %}
+            {% for w, x,y in pages %}
             <li class="toc-{{w}}"><a href="{{x}}">{{y}}</a>
-            {%if page_numbers %}<span class="page_number">{{z}}</span>{% endif %}</li>
+            {%if page_numbers %}
+            <a href="{{x}}" class="page_number"></a>
+            {% endif %}</li>
             {% endfor %}
         </ul>
         """).render(pages=toc, page_numbers=page_numbers)
@@ -148,51 +151,39 @@ class HTMLGenerator(Generator):
 class PDFGenerator(Generator):
     identifier = 'pdf'
 
-    def update_page_numbers_and_id(self, bookmarks, toc, index=0):
-        for (label, (page, _, _), children) in bookmarks:
-            label == label.lstrip('0123456789. ')
-            assert label == toc[index][2]
-            toc[index] = (toc[index][0], self._uid(toc[index][1]), toc[index][2], page+1)
-            index = self.update_page_numbers_and_id(children, toc, index+1)
-        return index
-
     def _uid(self, value):
         return '#' + value.replace('#', '-').replace('/', '-')
 
-    def _prepare_pdf_pages(self, pages, template, toc_html):
+    def process(self, pages, toc):
+        if not utils.is_in_path('prince'):
+            raise RaphidocException('Could not find prince in PATH')
+        toc_html = self.toc_to_html(toc, True)
+
+        env = Environment(loader=FileSystemLoader(self.config['theme']))
+        template = env.get_template('pdf.html')
+
+        pdf_destination_path = os.path.join(self.output_directory,
+                                            self.config.get('pdf-filename', 'index.pdf'))
+
+
         complete = ''
         for page in pages:
             raw = str(page.result)
             if page.toc:
                 raw = raw.replace('{{TOC}}', toc_html)
 
-            for _, url, _, _ in page.generate_toc():
-                raw = raw.replace(url[url.find('#'):], self._uid(url))
-                raw = raw.replace('id="{}"'.format(url[url.find('#')+1:]),
+            complete += raw + '\n'
+        for page in pages:
+            for _, url, _ in page.generate_toc():
+                complete = complete.replace(url, '#{}'.format(self._uid(url)[1:]))
+                complete = complete.replace('id="{}"'.format(url[url.find('#')+1:]),
                                   'id="{}"'.format(self._uid(url)[1:]))
 
-            complete += raw + '\n'
 
         tmp_html = os.path.join(self.output_directory, 'pdf.tmp.html')
         with open(tmp_html, 'w') as f:
             f.write(template.render(config=self.config, content=complete))
-        import weasyprint
-        return weasyprint.HTML(tmp_html).render()
 
-    def process(self, pages, toc):
-        toc_html = self.toc_to_html(toc, True)
+        utils.princepdf(tmp_html, pdf_destination_path)
 
-        env = Environment(loader=FileSystemLoader(self.config['theme']))
-        template = env.get_template('pdf.html')
-
-        document = self._prepare_pdf_pages(pages, template, toc_html)
-
-        # Updat page numbers
-        self.update_page_numbers_and_id(document.make_bookmark_tree(), toc)
-        toc_html = self.toc_to_html(toc, True)
-        document = self._prepare_pdf_pages(pages, template, toc_html)
-
-        # TODO: make output fle path configurable
-        pdf_destination_path = os.path.join(self.output_directory, 'index.pdf')
-        document.write_pdf(pdf_destination_path)
         logger.info('PDF written to file://{}'.format(pdf_destination_path))

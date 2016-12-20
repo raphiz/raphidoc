@@ -1,73 +1,59 @@
-.title-page{
-    text-align: center!important;
-    padding-top: 7rem;
-}
-.title-page-title {
-    padding-top: 7rem;
-    font-size: 2rem;
-}
-
-.title-page-subtitle {
-    padding-top: 1rem;
-    font-size: 1.5rem;
-}
-
-.title-page-details {
-    padding-top: 25rem;
-}
-
-.toc a, .page_number {
-    text-decoration: none;
-    color: black;
-    background-color: white;
-}
-ul.toc li {
-    clear: both;
-    margin-bottom: 0.8rem;
-}
-
-
-ul.toc li a:first-child {
-	float: left;
-	padding: 0 .4em 0 0;
-	margin: 0;
-}
-ul.toc li a + span {
-	float: right;
-	padding: 0 0 0 .4em;
-	margin: 0;
-}
-
-ul.toc li:after {
-	content: "";
-	display: block;
-	overflow: hidden;
-	height: 1em;
-	border-bottom: 1px dotted;
-    z-index: -1;
-}
-
-h1 {
-    page-break-before: always;
-}
-
-hr {
-    border: none;
-    page-break-before: always;
-}
-
-html{
-    -weasy-hyphens: auto;
-}
 @page {
     size: A4;
-    margin: 1cm;
+    margin: 1.2cm;
 
     @top-left {
         content: string(chapter);
     }
 
     @bottom-right {
+        font-family: 'Merriweather', Georgia, 'Times New Roman', Times, serif;
         content: "" counter(page) "/" counter(pages);
     }
+}
+.toc {
+    margin-left: 0;
+    padding-left: 0;
+}
+.toc a,
+.toc a:visited{
+    color: black;
+    text-decoration: none;
+}
+
+.title-page{
+    text-align: center!important;
+    padding-top: 7em;
+}
+.title-page-title {
+    padding-top: 7em;
+    font-size: 2em;
+}
+
+.title-page-subtitle {
+    padding-top: 1em;
+    font-size: 1.5em;
+}
+
+.title-page-details {
+    padding-top: 25em;
+}
+
+h1 {
+    page-break-before: always;
+}
+
+p {
+    hyphens: auto;
+}
+
+.page_number::after {
+    content: leader(".") target-counter(attr(href), page);
+}
+
+/* TODO: This ain't a pretty solution -
+but checkbox hacks do not
+work with the currently generated html*/
+input[type="checkbox"]{
+    display: none;
 }
