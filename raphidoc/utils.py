@@ -25,7 +25,7 @@ def is_in_path(*args):
 
 def princepdf(source, destination):
     # TODO: debug if in debug!
-    p1 = subprocess.Popen(['prince', source, destination],
+    p1 = subprocess.Popen(['prince', source, '-o', destination],
                           stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE)
     stdout, stderr = p1.communicate()
