@@ -53,8 +53,10 @@ class Generator:
         # TODO: load 'output' & markdown exteions from config
         self.output_directory = os.path.join(self.working_directory, 'output', self.identifier)
         # TODO: Configure math via config (eg. additional packages, output directory etc.)
+        from markdown.extensions.headerid import HeaderIdExtension
         self.md = markdown.Markdown(extensions=[mdx_math.MathExtension(self.output_directory),
                                                 mdx_captions.FigcaptionExtension(),
+                                                'markdown.extensions.toc',
                                                 'markdown.extensions.def_list',
                                                 'markdown.extensions.codehilite',
                                                 'markdown.extensions.admonition',
