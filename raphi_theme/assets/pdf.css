@@ -1,12 +1,17 @@
+body{
+    font-size: 0.8em;
+}
 @page {
     size: A4;
     margin: 1.2cm;
 
     @top-left {
+        font-size: 0.5em;
         content: string(chapter);
     }
 
     @bottom-right {
+        font-size: 0.5em;
         font-family: 'Merriweather', Georgia, 'Times New Roman', Times, serif;
         content: "" counter(page) "/" counter(pages);
     }
@@ -56,4 +61,12 @@ but checkbox hacks do not
 work with the currently generated html*/
 input[type="checkbox"]{
     display: none;
+}
+
+.codehilite {
+    font-size: 0.8em;
+    page-break-inside: avoid;
+}
+.admonition{
+    page-break-inside: avoid;
 }
