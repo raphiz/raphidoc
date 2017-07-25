@@ -60,7 +60,7 @@ class Generator:
                                                 'markdown.extensions.def_list',
                                                 'markdown.extensions.codehilite',
                                                 'markdown.extensions.admonition',
-                                                'pymdownx.github(no_nl2br=True)'])
+                                                'pymdownx.github'])
 
         self._setup_output()
         self._copy_assets()
