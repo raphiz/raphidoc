@@ -112,7 +112,7 @@ def compile_latex(formula, inline, cache_directory, no_cache=False, after_error=
                 return f.read()
     try:
         logger.debug('Rendering formula {}'.format(formula))
-        program = """var mjAPI = require("mathjax-node/lib/mj-single.js");
+        program = """var mjAPI = require("mathjax-node");
         mjAPI.typeset({
           math: %s,
           format: "%s", // "TeX", "inline-TeX", "MathML"
